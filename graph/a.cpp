@@ -3,11 +3,11 @@
 #include<iostream>
 #include<algorithm>
 #include<set>
-#include <map>
 #include <stack>
+#include <cstring>
 using namespace std;
 
-const char ED	= '\003';
+const char ED	= '$';//'\003';
 const char OUT[][5]	= {"NO","YES"};
 template<typename T>
 class Set
@@ -40,7 +40,7 @@ class Set
 	private:
 		set<T> _set; 
 };
-
+#define C 129
 template<typename TType>
 struct Trie;
 typedef Trie<char> SuffixTree;
@@ -50,42 +50,44 @@ struct Trie
 	Trie(){
 		data='0';
 		parent=NULL;
+		ct=0;
+		memset(childs,0,C*sizeof(Trie*));
 	}
 
 	virtual ~Trie(){
-		clear();
+    	clear();
 	}
 
 	void clear(){
-		if(!childs.empty()){
-			typename map<TType,Trie*>::iterator it;
-			for(it=childs.begin();it!=childs.end();it++){
-//cout<<"CLR:"<<it->first<<endl;				
-				delete it->second;
-			}
-		}
-		childs.clear();
+//    printf("Clr:%c,ct=%d\n",data,ct);
+		if(ct>0)
+			for(int i=0;i<C;i++)
+				if(childs[i]){
+					//printf("[%c]mait:%c\n",data,i);                
+					delete childs[i];
+					childs[i]=NULL;
+				}
+		ct=0;
+//        cout<<"DLr:"<<data<<endl;		
 	}
 
 	TType data;
-	map<TType,Trie*> childs;
+	Trie* childs[C];
 	Trie* parent;
+	int ct;
 
- 	Trie* match(const char* str)
+	Trie* match(const char* str)
 	{
-//        printf("ch[%c]\n",*str);
+		//        printf("dat[%c],ch[%d]=%d\n",data,*str,childs[*str]);
 		if(!*str)
 			return this;
 		else{
-			typename map<TType,Trie*>::iterator it=childs.find(*str);
-//if(it==childs.end())printf("NULL!");	
-			if(it==childs.end()){
+			if(childs[*str]==NULL)
 				return NULL;
-			}else{
-				return it->second->match(str+1);
-			}
+			else
+				return childs[*str]->match(str+1);
 		}
-			
+		printf("Mend!\n");
 	}
 
 	void insertPfx(const TType* data,int len){
@@ -95,25 +97,26 @@ struct Trie
 	}
 
 	Trie* insert(const TType* data){
-		typename map<TType,Trie*>::iterator it=childs.find(*data);
 		Trie* p;
 		Trie* rt;
-
+//printf("childs[%c]=%d\n",*data,childs[*data]);
 		if(*data){
-			if(it!=childs.end()){
-				p=it->second;
+			if(childs[*data]!=NULL){
+				p=childs[*data];
 			}else{
 				p = new Trie();
 				p->parent=this;
 				p->data=*data;
 				childs[*data]=p;
+				ct++;
+//printf("ins!\n");			
 			}
-//            printf("x+1 %c %d\n",*(data),*(data));		
-//            printf ( "this\n" );
+			//            printf("x+1 %c %d\n",*(data),*(data));		
+			//            printf ( "this\n" );
 			rt=p->insert(data+1);
-//            printf ( "Got: %c\n",rt->data );
+			//            printf ( "Got: %c\n",rt->data );
 		}else{
-//            printf("ret!");
+			//            printf("ret!");
 			rt=this;
 		}
 		return rt;
@@ -129,7 +132,7 @@ struct Trie
 	}
 
 	void btr(int i,Set<int>& se){
-//        this->BackPrint();
+		//        this->BackPrint();
 		stack<SuffixTree*> stk;
 		stack<int> sti;
 		stk.push(this);
@@ -138,17 +141,19 @@ struct Trie
 		while(!stk.empty()){
 			SuffixTree* st=stk.top();stk.pop();
 			va=sti.top();sti.pop();
-//cout<<"d->"<<st->data<<endl;			
-			if(st->childs.empty()){
+//    cout<<"d->"<<st->data<<endl;			
+			if(st->ct==0){
 				se.insert(va);
 			}else{
-				typename map<TType,Trie*>::iterator it;
-				for(it=st->childs.begin();it!=st->childs.end();it++){
-//cout<<"CH="<<it->first<<endl;
-//getchar();
-					stk.push(it->second);
-					sti.push(va+1);
-				}
+				//cout<<"CH="<<it->first<<endl;
+				//getchar();
+				int ck=st->ct;
+				for(int i=0;i<C;i++)
+					if(st->childs[i]){
+						stk.push(st->childs[i]);
+						sti.push(va+1);
+						if(--ck==0)break;
+					}
 			}
 		}
 	}
@@ -180,11 +185,11 @@ int measure()
 	for(int i=0;i<n-ni+1;i++){
 		sa.clear();
 		sa=Tget(sk[i],r[0]);
-//cout<<sa;		
+		//cout<<sa;		
 		if(sa.empty())continue;
 		for(int k=1;k<ni;k++){
 			sb=Tget(sk[i+k],r[k]);
-//cout<<sb;			
+			//cout<<sb;			
 			sa=sa*sb;
 			if(sa.empty())break;
 		}
@@ -194,8 +199,8 @@ int measure()
 }
 
 void Clr(){
-//cout<<"Inclean"<<endl;	
 	for(int i=0;i<n;i++){
+//cout<<"Inclean"<<i<<endl;	
 		sk[i].clear();
 	}
 }
@@ -208,26 +213,29 @@ int main()
 	Clr();
 	while(true){
 		fscanf(file,"%d%d%d",&n,&m,&k);
-//printf("%d,%d,%d\n",n,m,k);
+//        printf("%d,%d,%d\n",n,m,k);
 		if(n==0 && m==0 && k==0)break;
 		for(i=0;i<n;i++){
 			fscanf(file,"%s",buf);
 			buf[m]=ED;
 			buf[m+1]='\0';
 			sk[i].insertPfx(buf,m+1);
+//            Set<int> f=Tget(sk[i],"A");
+//            cout<<f<<endl;
+//            return 0;
 		}
 		for(i=0;i<k;i++){
 			fscanf(file,"%d%d",&ni,&mi);
-//printf("nimi%d,%d",ni,mi);			
+			//printf("nimi%d,%d",ni,mi);			
 			for(j=0;j<ni;j++){
 				fscanf(file,"%s",r[j]);
 			}
 			printf("%s\n",OUT[measure()]);
 		}
+		Clr();
 //        break;
-        Clr();
 	}
-	
+
 	fclose(file);
 	return 0;
 }
